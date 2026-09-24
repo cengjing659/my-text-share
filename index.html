@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -10,114 +9,101 @@
     .card { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
     h3 { margin-top: 0; color: #333; font-size: 18px; }
     .status { font-size: 12px; color: #999; margin-bottom: 15px; }
-    .content-box {
-        background: #f9f9f9; padding: 20px; border-radius: 8px;
-        min-height: 80px; display: flex; align-items: center; justify-content: center;
-        color: #333; line-height: 1.6; word-break: break-all; font-size: 16px;
+    
+    /* 内容显示区 */
+    .content-box { 
+        background: #f9f9f9; padding: 20px; border-radius: 8px; 
+        min-height: 80px; display: flex; align-items: center; justify-content: center; 
+        color: #333; line-height: 1.6; word-break: break-all; font-size: 16px; 
         border: 1px dashed #ddd; margin-bottom: 20px; text-align: left;
     }
-    .btn {
-        background: #07c160; color: white; border: none;
-        padding: 12px 0; border-radius: 25px; font-size: 16px;
+    
+    /* 按钮样式 */
+    .btn { 
+        background: #07c160; color: white; border: none; 
+        padding: 12px 0; border-radius: 25px; font-size: 16px; 
         cursor: pointer; width: 100%; transition: all 0.2s; font-weight: bold;
     }
     .btn:active { transform: scale(0.98); }
     .btn.disabled { background: #ccc; cursor: not-allowed; transform: none; }
-    .btn.loading { background: #e6e6e6; color: #999; cursor: wait; }
+
     .tip { font-size: 12px; color: #b0b0b0; margin-top: 15px; }
 </style>
 </head>
 <body>
 
 <div class="card">
-    <h3>专属文本领取</h3>
+    <h3>🎁 专属文本领取</h3>
     <div class="status" id="statusText">库存充足</div>
+    
+    <!-- 显示内容的区域 -->
     <div id="msgBox" class="content-box">点击下方按钮领取</div>
+
+    <!-- 按钮 -->
     <button id="actionBtn" class="btn" onclick="claimText()">立即领取</button>
-    <p class="tip">刷新可再次尝试领取</p>
+    
+    <p class="tip">每人随机不重复，领完即止</p>
 </div>
 
 <script>
     // ================== 配置区域 ==================
-    // 每条口令/文本都必须用英文双引号包起来，行尾用英文逗号分隔
+    // 1. 在这里填入你的文本库（每条用英文双引号包起来，逗号分隔）
     const texts = [
         "9.74 复制打开抖音，看看【NG甜甜的图文作品】如果明天的路你不知道该往哪走  https://v.douyin.com/buyDbFE5BCQ/ Ljp:/ h@B.TY :3pm 12/20",
         "2.00 复制打开抖音，看看【伦.的图文作品】如果一定要上岸 那一定是西海岸  https://v.douyin.com/ot_Rls9MbP8/ 08/30 u@s.EH ytE:/ :3pm",
         "1.07 复制打开抖音，看看【一顿要吃三碗饭的图文作品】西海岸  https://v.douyin.com/u8jcB5IH21o/ QkC:/ x@f.Ok 06/13 :9pm",
-        "9.74 复制打开抖音，看看【NG甜甜的图文作品】如果明天的路你不知道该往哪走  https://v.douyin.com/buyDbFE5BCQ/ Ljp:/ h@B.TY :3pm 12/20",
-        "2.00 复制打开抖音，看看【伦.的图文作品】如果一定要上岸 那一定是西海岸  https://v.douyin.com/ot_Rls9MbP8/ 08/30 u@s.EH ytE:/ :3pm",
         "这是最后一条文本内容"
     ];
-
-    // JsonBlob ID
-    const BLOB_ID = '01a0d3dc-2849-7640-aa69-43e226c7ad3f';
     // ==============================================
 
-    const API_URL = 'https://jsonblob.com/api/jsonBlob/' + BLOB_ID;
     const msgBox = document.getElementById('msgBox');
     const btn = document.getElementById('actionBtn');
     const statusText = document.getElementById('statusText');
 
-    async function claimText() {
-        if (btn.classList.contains('disabled') || btn.classList.contains('loading')) return;
-        setLoading(true);
-        try {
-            const res = await fetch(API_URL);
-            if (!res.ok) throw new Error("网络请求失败");
-            const data = await res.json();
-            let currentCount = data.count || 0;
-
-            if (currentCount >= texts.length) {
-                showFinished();
-                return;
-            }
-
-            const myText = texts[currentCount];
-
-            await fetch(API_URL, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ count: currentCount + 1 })
-            });
-
-            showResult(myText);
-        } catch (error) {
-            console.error(error);
-            alert("领取失败，可能是网络波动，请重试。");
-            setLoading(false);
+    // 核心逻辑：洗牌算法（Fisher-Yates），每次打开页面都会把数组彻底打乱
+    function shuffleArray(array) {
+        let shuffled = [...array]; // 复制一份，不破坏原数组
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
+        return shuffled;
     }
 
-    function showResult(text) {
-        msgBox.innerText = text;
-        msgBox.style.background = "#e8f5e9";
+    // 每次打开网页，生成一个全新的、打乱的文本池
+    let availablePool = shuffleArray(texts);
+
+    function claimText() {
+        // 如果池子空了，提示已领完
+        if (availablePool.length === 0) {
+            showFinished();
+            return;
+        }
+
+        // 从打乱的池子里拿走第一条（拿走后池子自动变短，实现不重复）
+        const myText = availablePool.shift(); 
+
+        // 显示结果
+        msgBox.innerText = myText;
+        msgBox.style.background = "#e8f5e9"; 
         msgBox.style.borderColor = "#c8e6c9";
+        
         btn.innerText = "一键复制";
-        btn.classList.remove('loading');
-        btn.style.background = "#07c160";
+        btn.style.background = "#07c160"; 
         btn.onclick = copyText;
-        statusText.innerText = "领取成功！";
+        statusText.innerText = "领取成功！剩余库存：" + availablePool.length;
     }
 
+    // 显示已领完界面
     function showFinished() {
         msgBox.innerText = "内容已全部发完，请等待管理员补充。";
         msgBox.style.color = "#999";
         btn.innerText = "暂无库存";
         btn.classList.add('disabled');
-        btn.classList.remove('loading');
         statusText.innerText = "库存 0";
     }
 
-    function setLoading(isLoading) {
-        if (isLoading) {
-            btn.innerText = "正在分配...";
-            btn.classList.add('loading');
-        } else {
-            btn.innerText = "立即领取";
-            btn.classList.remove('loading');
-        }
-    }
-
+    // 辅助功能：复制
     function copyText() {
         const text = msgBox.innerText;
         navigator.clipboard.writeText(text).then(() => {
@@ -127,5 +113,6 @@
         });
     }
 </script>
+
 </body>
 </html>
