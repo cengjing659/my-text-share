@@ -25,7 +25,7 @@
     <!-- 按钮 -->
     <button id="actionBtn" class="btn" onclick="showText()">一键领取文本</button>
     
-    <p class="tip">每人限领一次，请复制保存</p>
+    <p class="tip">刷新页面可再次领取</p>
 </div>
 
 <script>
@@ -42,43 +42,27 @@
     const msgBox = document.getElementById('msgBox');
     const btn = document.getElementById('actionBtn');
     
-    // 检查用户是否已经领过了（利用浏览器缓存）
-    const savedText = localStorage.getItem('my_unique_text');
-
-    if (savedText) {
-        // 如果领过了，直接显示之前的内容，按钮变灰
-        msgBox.innerText = savedText;
-        btn.innerText = "已领取";
-        btn.style.background = "#ccc";
-        btn.disabled = true;
-        btn.style.cursor = "not-allowed";
-    }
-
+    // 页面加载时，自动随机显示一条（可选，或者保持点击后显示）
+    // 这里保持点击后显示，更有仪式感
+    
     function showText() {
-        if (localStorage.getItem('my_unique_text')) return;
-
-        // 随机抽取一条文本（因为去掉了服务器，随机是最稳定的方案）
+        // 随机抽取一条文本
         const randomIndex = Math.floor(Math.random() * texts.length);
         const myText = texts[randomIndex];
 
         // 显示文本
         msgBox.innerText = myText;
         
-        // 保存到本地，防止刷新后重复领取
-        localStorage.setItem('my_unique_text', myText);
-
-        // 改变按钮状态
+        // 改变按钮文字为“复制”
         btn.innerText = "复制文本";
-        btn.onclick = copyText;
-        btn.style.background = "#07c160"; // 保持绿色
+        btn.onclick = function() { copyText(myText); };
         
-        // 自动复制一次（可选）
+        // 自动复制一次（可选，如果不需要可以删掉下面这行）
         copyText(myText);
     }
 
     function copyText(text) {
-        const content = text || msgBox.innerText;
-        navigator.clipboard.writeText(content).then(() => {
+        navigator.clipboard.writeText(text).then(() => {
             alert("复制成功！");
         }).catch(() => {
             alert("复制失败，请长按文字手动复制");
