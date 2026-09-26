@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -5,37 +6,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>专属文本领取</title>
 <style>
-    body { 
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-        display: flex; justify-content: center; align-items: center; 
-        min-height: 100vh; background: #f5f5f5; margin: 0; padding: 20px; box-sizing: border-box; 
-    }
-    .card { 
-        background: #fff; padding: 30px; border-radius: 12px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; 
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f5f5; margin: 0; padding: 20px; box-sizing: border-box; }
+    .card { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
     h3 { margin-top: 0; color: #333; font-size: 18px; }
     .status { font-size: 12px; color: #999; margin-bottom: 15px; }
-    .content-box { 
-        background: #f9f9f9; padding: 20px; border-radius: 8px; 
-        min-height: 80px; display: flex; align-items: center; justify-content: center; 
-        color: #333; line-height: 1.6; word-break: break-all; font-size: 16px; 
-        border: 1px dashed #ddd; margin-bottom: 20px; text-align: left;
-    }
-    .btn { 
-        background: #07c160; color: white; border: none; 
-        padding: 12px 0; border-radius: 25px; font-size: 16px; 
-        cursor: pointer; width: 100%; transition: all 0.2s; font-weight: bold;
-    }
+    .content-box { background: #f9f9f9; padding: 20px; border-radius: 8px; min-height: 80px; display: flex; align-items: center; justify-content: center; color: #333; line-height: 1.6; word-break: break-all; font-size: 16px; border: 1px dashed #ddd; margin-bottom: 20px; text-align: left; }
+    .btn { background: #07c160; color: white; border: none; padding: 12px 0; border-radius: 25px; font-size: 16px; cursor: pointer; width: 100%; transition: all 0.2s; font-weight: bold; }
     .btn:active { transform: scale(0.98); }
     .btn.disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    .btn.loading { background: #e6e6e6; color: #999; cursor: wait; }
     .tip { font-size: 12px; color: #b0b0b0; margin-top: 15px; }
 </style>
 </head>
 <body>
 
 <div class="card">
-    <h3>🎁 专属文本领取</h3>
+    <h3>专属文本领取</h3>
     <div class="status" id="statusText">正在检查库存...</div>
     <div id="msgBox" class="content-box">点击下方按钮领取</div>
     <button id="actionBtn" class="btn" onclick="claimText()">立即领取</button>
@@ -43,86 +29,105 @@
 </div>
 
 <script>
-    // ================== 配置区域 ==================
-    // 1. 你的文本库
+    // ================== 1. 你的文本库 ==================
+    // 每条用英文双引号包起来，行尾用英文逗号分隔；想加几条就加几行
     const texts = [
-        "9.74 复制打开抖音，看看【NG甜甜的图文作品】如果明天的路你不知道该往哪走 https://v.douyin.com/buyDbFE5BCQ/ Ljp:/ h@B.TY :3pm 12/20",
-        "2.00 复制打开抖音，看看【伦.的图文作品】如果一定要上岸 那一定是西海岸 https://v.douyin.com/ot_Rls9MbP8/ 08/30 u@s.EH ytE:/ :3pm",
-        "1.07 复制打开抖音，看看【一顿要吃三碗饭的图文作品】西海岸 https://v.douyin.com/u8jcB5IH21o/ QkC:/ x@f.Ok 06/13 :9pm",
+        "9.74 复制打开抖音，看看【NG甜甜的图文作品】如果明天的路你不知道该往哪走  https://v.douyin.com/buyDbFE5BCQ/ Ljp:/ h@B.TY :3pm 12/20",
+        "2.00 复制打开抖音，看看【伦.的图文作品】如果一定要上岸 那一定是西海岸  https://v.douyin.com/ot_Rls9MbP8/ 08/30 u@s.EH ytE:/ :3pm",
+        "1.07 复制打开抖音，看看【一顿要吃三碗饭的图文作品】西海岸  https://v.douyin.com/u8jcB5IH21o/ QkC:/ x@f.Ok 06/13 :9pm",
         "这是最后一条文本内容"
     ];
 
-    // 2. 填入你刚才在 npoint.io 生成的链接！
-    const API_URL = 'https://www.npoint.io/docs/090c23dc27779983f6a9'; 
-    // ==============================================
+    // ================== 2. 你的 jsonblob 地址 ==================
+    // 去 jsonblob.com 新建一个内容为 {"count":0} 的 bin，
+    // 把浏览器地址栏 api/jsonBlob/ 后面那一长串 ID 填到下面引号里：
+    const BLOB_ID = '01a0dcae-f445-7728-bd69-bf06fd9821be';
+    const API_URL = 'https://jsonblob.com/api/jsonBlob/' + BLOB_ID;
+    // ===========================================================
 
     const msgBox = document.getElementById('msgBox');
     const btn = document.getElementById('actionBtn');
     const statusText = document.getElementById('statusText');
 
-    // 本地防刷：防止同一个人刷新页面重复领
-    const HAS_CLAIMED = localStorage.getItem('has_claimed_global');
-
-    if (HAS_CLAIMED) {
-        // 如果本地有记录，直接显示已领取
-        msgBox.innerText = localStorage.getItem('my_text_content') || "你已领取过";
+    // 本机防刷：同一台设备刷新后还是显示自己领到的那条，不会换
+    const MY_TEXT = localStorage.getItem('my_claimed_text');
+    if (MY_TEXT) {
+        msgBox.innerText = MY_TEXT;
+        msgBox.style.background = "#e8f5e9";
+        msgBox.style.borderColor = "#c8e6c9";
         btn.innerText = "一键复制";
-        btn.onclick = () => copyText(msgBox.innerText);
+        btn.onclick = copyText;
         statusText.innerText = "你已领取过该内容";
+    } else {
+        statusText.innerText = "库存充足";
     }
 
     async function claimText() {
-        if (HAS_CLAIMED) return; // 本地已领取，拦截
-        if (btn.classList.contains('disabled')) return; // 正在加载，拦截
-
-        btn.innerText = "正在分配...";
-        
+        if (btn.classList.contains('disabled') || btn.classList.contains('loading')) return;
+        setLoading(true);
         try {
             // 1. 读取云端当前进度
             const res = await fetch(API_URL);
+            if (!res.ok) throw new Error("网络请求失败");
             const data = await res.json();
             let currentCount = data.count || 0;
 
             // 2. 判断是否还有库存
-            if (currentCount >= texts.length) {
-                msgBox.innerText = "内容已全部发完，请等待管理员补充。";
-                btn.innerText = "暂无库存";
-                btn.classList.add('disabled');
-                statusText.innerText = "全网库存 0";
-                return;
-            }
+            if (currentCount >= texts.length) { showFinished(); return; }
 
-            // 3. 拿到当前这条文本
+            // 3. 取当前这条
             const myText = texts[currentCount];
 
-            // 4. 更新云端计数器 (+1)
+            // 4. 写回云端，计数 +1（jsonblob 支持 PUT 改写，这是 npoint 做不到的关键一步）
             await fetch(API_URL, {
-                method: 'PATCH', // npoint 使用 PATCH 方法更新
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ count: currentCount + 1 })
             });
 
-            // 5. 保存到本地防刷
-            localStorage.setItem('has_claimed_global', 'true');
-            localStorage.setItem('my_text_content', myText);
+            // 5. 本机记录，防止刷新重领
+            localStorage.setItem('my_claimed_text', myText);
 
             // 6. 显示结果
-            msgBox.innerText = myText;
-            msgBox.style.background = "#e8f5e9"; 
-            msgBox.style.borderColor = "#c8e6c9";
-            btn.innerText = "一键复制";
-            btn.onclick = () => copyText(myText);
-            statusText.innerText = "领取成功！";
-
+            showResult(myText);
         } catch (error) {
             console.error(error);
-            alert("领取失败，网络开小差了，请重试。");
-            btn.innerText = "立即领取";
+            alert("领取失败，可能是网络波动，请重试。");
+            setLoading(false);
         }
     }
 
-    function copyText(text) {
-        navigator.clipboard.writeText(text).then(() => {
+    function showResult(text) {
+        msgBox.innerText = text;
+        msgBox.style.background = "#e8f5e9";
+        msgBox.style.borderColor = "#c8e6c9";
+        btn.innerText = "一键复制";
+        btn.classList.remove('loading');
+        btn.onclick = copyText;
+        statusText.innerText = "领取成功！";
+    }
+
+    function showFinished() {
+        msgBox.innerText = "内容已全部发完，请等待管理员补充。";
+        msgBox.style.color = "#999";
+        btn.innerText = "暂无库存";
+        btn.classList.add('disabled');
+        btn.classList.remove('loading');
+        statusText.innerText = "全网库存 0";
+    }
+
+    function setLoading(isLoading) {
+        if (isLoading) {
+            btn.innerText = "正在分配...";
+            btn.classList.add('loading');
+        } else {
+            btn.innerText = "立即领取";
+            btn.classList.remove('loading');
+        }
+    }
+
+    function copyText() {
+        navigator.clipboard.writeText(msgBox.innerText).then(() => {
             alert("复制成功！");
         }).catch(() => {
             alert("复制失败，请长按文字复制");
